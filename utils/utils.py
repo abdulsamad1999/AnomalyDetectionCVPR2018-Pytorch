@@ -56,8 +56,8 @@ def build_transforms(mode: str = "c3d") -> transforms.Compose:
         resize = 128, 171
         crop = 112
     elif mode == "i3d":
-        mean = [0, 0, 0]
-        std = [1, 1, 1]
+        mean = [0.485, 0.456, 0.406]
+        std = [0.229, 0.224, 0.225]
     elif mode == "mfnet":
         mean = [0.485, 0.456, 0.406]
         std = [0.229, 0.224, 0.225]
