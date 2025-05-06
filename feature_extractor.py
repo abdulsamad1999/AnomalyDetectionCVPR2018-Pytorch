@@ -160,10 +160,18 @@ class FeaturesWriter:
             return  # If data is empty, skip this dump.
         #####################################################
         features = to_segments(np.array([self.data[key] for key in sorted(self.data)]))
+        # with open(self.path, "w") as fp:
+        #     for d in features:
+        #         d_str = [str(x) for x in d]
+        #         fp.write(" ".join(d_str) + "\n")
+        # my code
+        features = np.array(features, dtype=np.float32)
         with open(self.path, "w") as fp:
-            for d in features:
-                d_str = [str(x) for x in d]
-                fp.write(" ".join(d_str) + "\n")
+            for segment in features:
+                line = " ".join(f"{x:.6f}" for x in segment)  # 6-digit precision, clean format
+                fp.write(line + "\n")
+        np.save(self.path.replace(".txt", ".npy"), features.astype(np.float16))
+        #end
 
     def _is_new_video(self, video_name: str, dir: str) -> bool:
         """Checks whether the given video is new or the writer is already
@@ -280,7 +288,26 @@ if __name__ == "__main__":
         args.model_type,
     )
 
-    network = load_feature_extractor(args.model_type, args.pretrained_3d, device).eval()
+    # network = load_feature_extractor(args.model_type, args.pretrained_3d, device).eval()
+    # my added code 
+    if args.model_type == "i3d":
+        from network.i3d import InceptionI3d
+
+        model = InceptionI3d(num_classes=400, in_channels=3)
+        weights = torch.load(args.pretrained_3d, map_location=device)
+        model.load_state_dict(weights)
+        model.eval()
+        model.to(device)
+
+        def forward_i3d(x):
+            with torch.no_grad():
+                feat = model.extract_features(x)  # (B, 1024, 1, 1, 1)
+                feat = feat.squeeze(-1).squeeze(-1).squeeze(-1)  # → (B, 1024)
+                return feat
+        network = forward_i3d
+    else:
+        network = load_feature_extractor(args.model_type, args.pretrained_3d, device).eval()
+    # end
 
     if not path.exists(args.save_dir):
         mkdir(args.save_dir)
